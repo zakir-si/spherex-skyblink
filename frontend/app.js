@@ -25,24 +25,61 @@ function drawCandidateMarkers(){for(const c of state.candidates){const px=c.x/25
 function renderCandidates(){ $('candidateCount').textContent=state.candidates.length;const el=$('candidateList');if(!state.candidates.length){el.innerHTML='<div class="empty">No candidates in this sequence.</div>';return;}el.innerHTML=state.candidates.map((c,i)=>`<div class="candidate ${state.selected===i?'selected':''}" data-index="${i}"><div class="candidate-top"><span><strong>${c.id}</strong></span><span class="candidate-type">${c.kind}</span></div><div class="candidate-meta"><div>Motion<strong>${c.motion_px.toFixed(2)} px</strong></div><div>S/N<strong>${c.snr.toFixed(1)}</strong></div><div>Score<strong>${Math.round(c.score*100)}%</strong></div><div>Vector<strong>${c.dx.toFixed(2)}, ${c.dy.toFixed(2)}</strong></div></div></div>`).join('');el.querySelectorAll('.candidate').forEach(n=>n.addEventListener('click',()=>{state.selected=Number(n.dataset.index);renderCandidates();$('selectedCandidate').textContent=state.candidates[state.selected].id;drawCandidateMarkers();}));}
 function renderSpectrum(){const w=spectrumCanvas.width,h=spectrumCanvas.height;spectrumCtx.clearRect(0,0,w,h);spectrumCtx.fillStyle='#090c12';spectrumCtx.fillRect(0,0,w,h);if(!state.spectrumWavelength.length)return;const pad=36,minX=.75,maxX=5,minY=Math.min(...state.spectrumFlux),maxY=Math.max(...state.spectrumFlux);spectrumCtx.strokeStyle='#222737';for(let i=0;i<5;i++){const y=pad+i*(h-2*pad)/4;spectrumCtx.beginPath();spectrumCtx.moveTo(pad,y);spectrumCtx.lineTo(w-pad,y);spectrumCtx.stroke();}spectrumCtx.beginPath();state.spectrumWavelength.forEach((xv,i)=>{const x=pad+(xv-minX)/(maxX-minX)*(w-2*pad),y=h-pad-(state.spectrumFlux[i]-minY)/(maxY-minY)*(h-2*pad);if(i===0)spectrumCtx.moveTo(x,y);else spectrumCtx.lineTo(x,y);});spectrumCtx.strokeStyle='#7ef6ff';spectrumCtx.lineWidth=2;spectrumCtx.stroke();}
 async function loadDemo(){setStatus('LOADING DEMO…');const r=await fetch('/api/demo');if(!r.ok)throw new Error(await r.text());const data=await r.json();state.frames=data.frames;state.candidates=data.candidates;state.spectrumWavelength=data.spectrum_wavelength_um;state.spectrumFlux=data.spectrum_flux_ujy;state.index=0;state.selected=null;$('timeline').max=state.frames.length-1;$('timelineLeft').textContent=dateOnly(state.frames[0].timestamp);$('timelineRight').textContent=dateOnly(state.frames.at(-1).timestamp);renderCandidates();renderSpectrum();renderFrame();setStatus('OFFLINE DEMO');}
-async function liveSearch(){
-  const ra=Number($('ra').value),dec=Number($('dec').value),radius=Number($('radius').value),w=Number($('wavelength').value);
-  if(!Number.isFinite(ra)||!Number.isFinite(dec)||!Number.isFinite(radius))throw new Error('Enter valid coordinates and radius.');
-  setStatus('QUERYING IRSA…',true);
-  const p=new URLSearchParams({ra,dec,radius_deg:radius});if(Number.isFinite(w)&&w>0)p.set('wavelength_um',w);
-  const r=await fetch('/api/search?'+p),payload=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(payload.detail||`IRSA search failed (${r.status})`);
-  const obs=payload.observations.slice().sort((a,b)=>(a.start_mjd??0)-(b.start_mjd??0));
-  state.frames=[];state.candidates=[];state.selected=null;renderCandidates();setStatus(`LIVE • ${obs.length} OBS`,true);
-  if(!obs.length){$('epochLabel').textContent='No SPHEREx observations';$('frameDate').textContent='Try a nearby coordinate or slightly larger radius';ctx.fillStyle='#07080c';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#9299aa';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('IRSA returned zero matching image records.',canvas.width/2,canvas.height/2-14);ctx.fillText('This is a data-query result, not a candidate-detection failure.',canvas.width/2,canvas.height/2+16);return;}
-  const previews=[];let failures=[];
-  for(const [i,o] of obs.slice(0,6).entries()){
-    if(!o.access_url){failures.push(`${o.obs_id}: no access_url`);continue;}
-    try{const pp=new URLSearchParams({url:o.access_url,ra:String(ra),dec:String(dec),size_deg:String(Math.min(radius,.25))});const pr=await fetch('/api/preview?'+pp);const pd=await pr.json().catch(()=>({}));if(!pr.ok){failures.push(pd.detail||`preview HTTP ${pr.status}`);continue;}previews.push({id:o.obs_id,timestamp:new Date((o.start_mjd-40587)*86400000).toISOString(),label:`SPHEREx ${i+1}`,image_data_url:pd.image_data_url,candidate_count:0});}catch(err){failures.push(err.message);}
+async function fetchPreview(o, index, ra, dec, sizeDeg) {
+  if (!o.access_url) throw new Error(o.obs_id + ': no access_url');
+  const pp = new URLSearchParams({ url: o.access_url, ra: String(ra), dec: String(dec), size_deg: String(sizeDeg) });
+  const pr = await fetch('/api/preview?' + pp);
+  const pd = await pr.json().catch(() => ({}));
+  if (!pr.ok) throw new Error(pd.detail || ('preview HTTP ' + pr.status));
+  if (!pd.image_data_url) throw new Error('Preview endpoint returned no image');
+  return { id: o.obs_id, timestamp: new Date((o.start_mjd - 40587) * 86400000).toISOString(), label: 'SPHEREx ' + (index + 1), image_data_url: pd.image_data_url, candidate_count: 0 };
+}
+
+async function liveSearch() {
+  const ra = Number($('ra').value), dec = Number($('dec').value);
+  const radius = Number($('radius').value), w = Number($('wavelength').value);
+  if (!Number.isFinite(ra) || !Number.isFinite(dec) || !Number.isFinite(radius)) throw new Error('Enter valid coordinates and radius.');
+  setStatus('QUERYING IRSA…', true);
+  const p = new URLSearchParams({ ra, dec, radius_deg: radius });
+  if (Number.isFinite(w) && w > 0) p.set('wavelength_um', w);
+  const r = await fetch('/api/search?' + p);
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(payload.detail || ('IRSA search failed (' + r.status + ')'));
+  const obs = payload.observations.slice().sort((a, b) => (a.start_mjd ?? 0) - (b.start_mjd ?? 0));
+  state.frames = []; state.candidates = []; state.selected = null; renderCandidates();
+  if (!obs.length) {
+    setStatus('LIVE • 0 OBS', true);
+    $('epochLabel').textContent = 'No SPHEREx observations';
+    $('frameDate').textContent = 'Try a nearby coordinate or slightly larger radius';
+    ctx.fillStyle = '#07080c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#9299aa'; ctx.font = '16px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('IRSA returned zero matching image records.', canvas.width / 2, canvas.height / 2 - 14);
+    ctx.fillText('This is a data-query result, not a candidate-detection failure.', canvas.width / 2, canvas.height / 2 + 16);
+    return;
   }
-  state.frames=previews;$('timeline').max=Math.max(0,state.frames.length-1);
-  if(state.frames.length){$('timelineLeft').textContent=dateOnly(state.frames[0].timestamp);$('timelineRight').textContent=dateOnly(state.frames.at(-1).timestamp);state.index=0;renderFrame();setStatus(`LIVE • ${obs.length} OBS • ${previews.length} PREVIEWS`,true);}
-  else{$('epochLabel').textContent='SPHEREx records found';$('frameDate').textContent=`${obs.length} observations • preview rejected`;ctx.fillStyle='#07080c';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#9299aa';ctx.textAlign='center';ctx.font='15px system-ui';ctx.fillText('IRSA metadata was found, but no image preview was decoded.',canvas.width/2,canvas.height/2-25);ctx.fillText(failures[0]||'Unknown preview error',canvas.width/2,canvas.height/2+5);ctx.fillText('Open browser developer tools if the full error is needed.',canvas.width/2,canvas.height/2+35);}
+  // Never download hundreds of FITS files: preview at most six chronological epochs.
+  const candidates = obs.filter(o => o.access_url && o.start_mjd != null).slice(0, 6);
+  setStatus('LIVE • ' + obs.length + ' OBS • PREPARING ' + candidates.length + ' PREVIEWS', true);
+  const settled = await Promise.allSettled(candidates.map((o, i) => fetchPreview(o, i, ra, dec, Math.min(radius, 0.05))));
+  const previews = settled.filter(x => x.status === 'fulfilled').map(x => x.value);
+  const failures = settled.filter(x => x.status === 'rejected').map(x => x.reason?.message || 'Unknown preview error');
+  state.frames = previews; state.candidates = []; state.index = 0; state.selected = null;
+  $('timeline').max = Math.max(0, previews.length - 1);
+  if (previews.length) {
+    $('timelineLeft').textContent = dateOnly(previews[0].timestamp);
+    $('timelineRight').textContent = dateOnly(previews.at(-1).timestamp);
+    renderCandidates(); renderFrame();
+    setStatus('LIVE • ' + obs.length + ' OBS • ' + previews.length + ' PREVIEWS', true);
+  } else {
+    $('epochLabel').textContent = 'SPHEREx records found';
+    $('frameDate').textContent = obs.length + ' observations • preview unavailable';
+    ctx.fillStyle = '#07080c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#9299aa'; ctx.textAlign = 'center'; ctx.font = '15px system-ui';
+    ctx.fillText('IRSA metadata was found, but no image preview was decoded.', canvas.width / 2, canvas.height / 2 - 25);
+    ctx.fillText(failures[0] || 'Unknown preview error', canvas.width / 2, canvas.height / 2 + 5);
+    ctx.fillText('The search succeeded; this is a preview/data-access issue.', canvas.width / 2, canvas.height / 2 + 35);
+    setStatus('LIVE • ' + obs.length + ' OBS • 0 PREVIEWS', true);
+  }
 }
 $('demoBtn').addEventListener('click',()=>loadDemo().catch(e=>alert(e.message)));
 $('searchBtn').addEventListener('click',()=>liveSearch().catch(e=>{setStatus('LIVE ERROR');alert(e.message)}));
