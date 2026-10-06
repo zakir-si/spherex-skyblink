@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -13,7 +14,7 @@ from .irsa import search_spherex
 from .models import SearchResponse
 from .remote import add_cutout_params, fetch_bytes, validate_remote_url
 
-app = FastAPI(title="SPHEREx SkyBlink API", version="0.1.0")
+app = FastAPI(title="SPHEREx SkyBlink API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +26,19 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "service": "spherex-skyblink", "collection": settings.spherex_collection}
+    try:
+        import astropy  # noqa: F401
+        science_ready = True
+    except ImportError:
+        science_ready = False
+
+    return {
+        "status": "ok",
+        "service": "spherex-skyblink",
+        "collection": settings.spherex_collection,
+        "science_ready": science_ready,
+        "max_live_previews": settings.max_live_previews,
+    }
 
 
 @app.get("/api/demo")
@@ -44,6 +57,7 @@ def search(
         rows = search_spherex(ra, dec, radius_deg, wavelength_um)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"IRSA query failed: {exc}") from exc
+
     return SearchResponse(
         source="IRSA SIA v2",
         query={"ra": ra, "dec": dec, "radius_deg": radius_deg, "wavelength_um": wavelength_um},
@@ -51,18 +65,30 @@ def search(
     )
 
 
+@lru_cache(maxsize=settings.preview_cache_size)
+def _cached_preview(url: str, ra: float, dec: float, size_deg: float) -> str:
+    cutout_url = add_cutout_params(url, ra, dec, size_deg)
+    data = fetch_bytes(cutout_url)
+    return fits_bytes_to_preview(data)
+
+
 @app.get("/api/preview")
 def preview(
     url: str = Query(..., min_length=12),
     ra: float = Query(..., ge=0, le=360),
     dec: float = Query(..., ge=-90, le=90),
-    size_deg: float = Query(0.05, gt=0, le=0.5),
+    size_deg: float = Query(settings.preview_size_deg, gt=0, le=0.5),
 ):
     try:
         validate_remote_url(url)
+        image_data_url = _cached_preview(url, round(ra, 8), round(dec, 8), round(size_deg, 6))
         cutout_url = add_cutout_params(url, ra, dec, size_deg)
-        data = fetch_bytes(cutout_url)
-        return {"image_data_url": fits_bytes_to_preview(data), "source_url": cutout_url}
+        return {"image_data_url": image_data_url, "source_url": cutout_url, "cached": True}
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Live FITS previews require Astropy. Reinstall backend/requirements.txt.",
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Preview failed: {exc}") from exc
 
