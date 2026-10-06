@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+
+# astronomy data / generated outputs
+data/raw/
+data/cache/
+*.fits
+*.fits.gz
+*.fz
