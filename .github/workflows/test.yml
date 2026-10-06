@@ -13,4 +13,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r backend/requirements.txt
+      - run: python -c "from astropy.io import fits; print('Astropy OK')"
       - run: pytest -q
