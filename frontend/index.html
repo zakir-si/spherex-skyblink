@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPHEREx SkyBlink</title>
+  <meta name="description" content="Explore how the infrared sky changes with SPHEREx." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">✦</span><span>SkyBlink</span><span class="pill">SPHEREx</span></div>
+    <div class="status" id="status">OFFLINE DEMO</div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">TIME-DOMAIN INFRARED ASTRONOMY</p>
+        <h1>Find what changed in the sky.</h1>
+        <p class="lede">Blink between SPHEREx epochs, inspect difference images, and flag possible moving or variable sources.</p>
+      </div>
+      <div class="hero-card">
+        <div class="metric"><strong>102</strong><span>spectral channels</span></div>
+        <div class="metric"><strong>0.75–5 μm</strong><span>infrared coverage</span></div>
+        <div class="metric"><strong>6</strong><span>demo epochs</span></div>
+      </div>
+    </section>
+    <section class="controls panel">
+      <div class="control-grid">
+        <label>RA (J2000)<input id="ra" type="number" step="0.00001" min="0" max="360" value="83.633" /></label>
+        <label>Dec (J2000)<input id="dec" type="number" step="0.00001" min="-90" max="90" value="-5.391" /></label>
+        <label>Radius (deg)<input id="radius" type="number" step="0.005" min="0.005" max="1" value="0.10" /></label>
+        <label>Wavelength (μm)<input id="wavelength" type="number" step="0.01" min="0.75" max="5" placeholder="all" /></label>
+      </div>
+      <div class="actions">
+        <button class="primary" id="demoBtn">Load demo sky</button>
+        <button id="searchBtn">Search live SPHEREx</button>
+        <button class="ghost" id="resetBtn">Reset</button>
+      </div>
+      <p class="hint">Demo mode is fully offline. Live mode queries IRSA SIA v2.</p>
+    </section>
+    <section class="viewer-layout">
+      <div class="viewer panel">
+        <div class="viewer-head">
+          <div><p class="section-kicker" id="epochLabel">Demo epoch 1</p><h2 id="frameDate">2025-07-01</h2></div>
+          <div class="view-tabs"><button class="tab active" data-view="sky">SKY</button><button class="tab" data-view="diff">DIFF</button></div>
+        </div>
+        <div class="sky-canvas-wrap" id="canvasWrap">
+          <canvas id="skyCanvas" width="768" height="768" aria-label="Sky image viewer"></canvas>
+          <div class="crosshair hidden" id="crosshair"></div>
+          <div class="legend"><span><i class="dot static"></i> source</span><span><i class="dot moving"></i> candidate</span></div>
+        </div>
+        <div class="timeline"><button id="prevBtn" aria-label="Previous epoch">◀</button><input id="timeline" type="range" min="0" max="5" value="0" step="1" /><button id="nextBtn" aria-label="Next epoch">▶</button></div>
+        <div class="timeline-meta"><span id="timelineLeft">2025-07-01</span><span id="timelineRight">2025-11-25</span></div>
+        <button class="blink" id="blinkBtn">▶ BLINK EPOCHS</button>
+      </div>
+      <aside class="side">
+        <section class="panel inspector"><div class="panel-head"><h3>Candidate queue</h3><span id="candidateCount" class="count">0</span></div><div id="candidateList" class="candidate-list"></div></section>
+        <section class="panel spectrum"><div class="panel-head"><h3>102-band spectrum</h3><span id="selectedCandidate">Demo</span></div><canvas id="spectrumCanvas" width="520" height="250"></canvas><div class="spectrum-axis"><span>0.75 μm</span><span>5.0 μm</span></div><p class="science-note">Demo spectrum is synthetic and exists to exercise the UI. Live extraction is the next science milestone.</p></section>
+        <section class="panel about"><h3>What SkyBlink is doing</h3><p>It compares aligned epochs, subtracts them, estimates noise robustly, and ranks significant residuals. A residual is a <strong>candidate</strong>, not a confirmed discovery.</p></section>
+      </aside>
+    </section>
+  </main>
+  <footer><span>SPHEREx SkyBlink • open-source prototype</span><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noreferrer">SPHEREx archive ↗</a></footer>
+  <script src="/app.js"></script>
+</body>
+</html>
