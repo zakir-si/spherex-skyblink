@@ -57,25 +57,57 @@ def parse_sia_csv(text: str, collection: str) -> list[Observation]:
     return result
 
 
-def search_spherex(ra: float, dec: float, radius_deg: float, wavelength_um: float | None = None) -> list[Observation]:
-    params: dict[str, str | float] = {
-        "COLLECTION": settings.spherex_collection,
-        "POS": f"CIRCLE {ra} {dec} {radius_deg}",
-        "DPTYPE": "image",
-        "CALIB": "2",
-        "FORMAT": "image/fits",
-        "MAXREC": str(settings.max_results),
-        "RESPONSEFORMAT": "CSV",
-    }
-    if wavelength_um is not None:
-        params["BAND"] = f"{wavelength_um * 1e-6}"
-
-    response = requests.get(settings.irsa_sia_url, params=params, timeout=settings.request_timeout_seconds)
-    if response.status_code >= 400 and settings.spherex_collection == "spherex_qr3":
-        fallback = dict(params)
-        fallback["COLLECTION"] = "spherex_qr2"
-        fallback_response = requests.get(settings.irsa_sia_url, params=fallback, timeout=settings.request_timeout_seconds)
-        fallback_response.raise_for_status()
-        return parse_sia_csv(fallback_response.text, "spherex_qr2")[: settings.max_results]
+def _query(params: dict[str, str | float]) -> list[Observation]:
+    response = requests.get(
+        settings.irsa_sia_url,
+        params=params,
+        timeout=settings.request_timeout_seconds,
+        headers={"User-Agent": "SPHEREx-SkyBlink/0.2"},
+    )
     response.raise_for_status()
-    return parse_sia_csv(response.text, settings.spherex_collection)[: settings.max_results]
+    return parse_sia_csv(response.text, str(params["COLLECTION"]))[: settings.max_results]
+
+
+def search_spherex(
+    ra: float,
+    dec: float,
+    radius_deg: float,
+    wavelength_um: float | None = None,
+) -> list[Observation]:
+    """Search SPHEREx using progressively less restrictive SIA constraints."""
+    collections = [settings.spherex_collection]
+    if settings.spherex_collection == "spherex_qr3":
+        collections.append("spherex_qr2")
+
+    variants = [
+        {"DPTYPE": "image", "CALIB": "2", "FORMAT": "image/fits"},
+        {"DPTYPE": "image", "CALIB": "2"},
+        {"DPTYPE": "image"},
+        {},
+    ]
+
+    last_error: Exception | None = None
+
+    for collection in collections:
+        for variant in variants:
+            params: dict[str, str | float] = {
+                "COLLECTION": collection,
+                "POS": f"CIRCLE {ra} {dec} {radius_deg}",
+                "MAXREC": str(settings.max_results),
+                "RESPONSEFORMAT": "CSV",
+                **variant,
+            }
+            if wavelength_um is not None:
+                w = wavelength_um * 1e-6
+                params["BAND"] = f"{w * 0.999} {w * 1.001}"
+
+            try:
+                rows = _query(params)
+                if rows:
+                    return rows
+            except requests.RequestException as exc:
+                last_error = exc
+
+    if last_error:
+        raise last_error
+    return []
