@@ -5,7 +5,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const canvas = $('skyCanvas'), ctx = canvas.getContext('2d');
 const spectrumCanvas = $('spectrumCanvas'), spectrumCtx = spectrumCanvas.getContext('2d');
-function setStatus(text, live=false){ $('status').textContent=text; $('status').style.color=live?'var(--accent2)':'var(--accent)'; }
+function setStatus(text, live=false){ $('status').textContent=text; $('status').style.color=live?'var(--cyan)':'var(--lime)'; }
 function dateOnly(iso){ return new Date(iso).toISOString().slice(0,10); }
 
 function renderFrame(){
@@ -90,9 +90,11 @@ async function liveSearch() {
   const payload = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(payload.detail || ('IRSA search failed (' + r.status + ')'));
   const obs = payload.observations.slice().sort((a, b) => (a.start_mjd ?? 0) - (b.start_mjd ?? 0));
-  state.frames = []; state.candidates = []; state.selected = null; renderCandidates();
+  state.frames = []; state.candidates = []; state.selected = null; renderCandidates(); renderEpochStrip();
   if (!obs.length) {
     setStatus('LIVE • 0 OBS', true);
+    $('timeline').max=0;$('timeline').value=0;
+    $('timelineLeft').textContent='—';$('timelineRight').textContent='—';
     $('epochLabel').textContent = 'No SPHEREx observations';
     $('frameDate').textContent = 'Try a nearby coordinate or slightly larger radius';
     ctx.fillStyle = '#07080c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -126,7 +128,7 @@ async function liveSearch() {
   }
 }
 $('demoBtn').addEventListener('click',()=>loadDemo().catch(e=>alert(e.message)));
-$('searchBtn').addEventListener('click',()=>liveSearch().catch(e=>{setStatus('LIVE ERROR');alert(e.message)}));
+$('searchBtn').addEventListener('click',()=>liveSearch().catch(e=>{setStatus('LIVE ERROR');const message=String(e?.message||'Unexpected error').slice(0,150);ctx.fillStyle='#030610';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ffbd8b';ctx.font='15px system-ui';ctx.textAlign='center';ctx.fillText('Search could not be completed',canvas.width/2,canvas.height/2-10);ctx.fillStyle='#a9b7d5';ctx.font='12px system-ui';ctx.fillText(message,canvas.width/2,canvas.height/2+18);}));
 $('resetBtn').addEventListener('click',()=>loadDemo().catch(()=>{}));
 $('timeline').addEventListener('input',e=>{state.index=Number(e.target.value);renderFrame();});
 $('prevBtn').addEventListener('click',()=>{if(state.frames.length){state.index=Math.max(0,state.index-1);renderFrame();}});
