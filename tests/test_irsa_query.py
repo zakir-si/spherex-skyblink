@@ -23,4 +23,4 @@ def test_query_contract(monkeypatch):
     assert seen["DPTYPE"] == "image"
     assert seen["CALIB"] == "2"
     assert seen["FORMAT"] == "image/fits"
-    assert seen["BAND"] == "2.2e-06"
+    assert seen["BAND"] == "2.1978e-06 2.2022e-06"
