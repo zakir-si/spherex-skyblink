@@ -12,7 +12,7 @@ class FakeResponse:
 def test_query_contract(monkeypatch):
     seen = {}
 
-    def fake_get(url, params, timeout):
+    def fake_get(url, params, timeout, **kwargs):
         seen.update(params)
         return FakeResponse()
 
