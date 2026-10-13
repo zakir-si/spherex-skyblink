@@ -12,6 +12,8 @@
 
 
 /* Temporal image workspace — the sky viewer is the product, not a decorative card. */
+.viewer-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,.78fr);align-items:start;gap:18px;}
+
 .viewer-workspace{align-items:start;gap:18px;scroll-margin-top:90px}
 .viewer-workspace>.viewer{padding:0;overflow:hidden;min-width:0;border-color:rgba(145,170,255,.24);background:linear-gradient(150deg,rgba(14,19,38,.97),rgba(5,8,19,.97));box-shadow:0 30px 100px #0007,0 0 0 1px #9eb4ff08,inset 0 1px #ffffff0b}
 .workspace-toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:18px 20px;border-bottom:1px solid #a6b8ff19;background:linear-gradient(100deg,#151b34cc,#0b1020aa)}
