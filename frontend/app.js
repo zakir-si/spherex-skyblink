@@ -10,21 +10,65 @@ function dateOnly(iso){ return new Date(iso).toISOString().slice(0,10); }
 
 function renderFrame(){
   if(!state.frames.length)return;
+  const token=(state.renderToken=(state.renderToken||0)+1);
   const frame=state.frames[state.index], img=new Image();
-  img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);if(state.view==='sky')ctx.drawImage(img,0,0,canvas.width,canvas.height);else renderDifference();drawCandidateMarkers();};
-  img.onerror=()=>{ctx.fillStyle='#07080c';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ffb86b';ctx.font='16px system-ui';ctx.textAlign='center';ctx.fillText('SPHEREx preview could not be decoded.',canvas.width/2,canvas.height/2);};
+  img.onload=()=>{
+    if(token!==state.renderToken)return;
+    if(state.view==='sky'){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      drawCandidateMarkers();
+    } else renderDifference(token);
+  };
+  img.onerror=()=>{
+    if(token!==state.renderToken)return;
+    ctx.fillStyle='#030610';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#ffbd8b';ctx.font='16px system-ui';ctx.textAlign='center';
+    ctx.fillText('Preview could not be decoded',canvas.width/2,canvas.height/2);
+  };
   img.src=frame.image_data_url;
-  $('epochLabel').textContent=frame.label;$('frameDate').textContent=dateOnly(frame.timestamp);$('timeline').value=state.index;
+  $('epochLabel').textContent=frame.label;
+  $('frameDate').textContent=dateOnly(frame.timestamp);
+  $('timeline').value=state.index;
+  if($('frameCounter'))$('frameCounter').textContent=String(state.index+1).padStart(2,'0')+' / '+String(state.frames.length).padStart(2,'0');
+  if($('timelineReadout'))$('timelineReadout').textContent='Epoch '+String(state.index+1).padStart(2,'0');
+  if($('frameInstrument'))$('frameInstrument').textContent=frame.id&&frame.id!=='demo'?'ARCHIVE OBSERVATION':'DEMO DATASET';
+  if($('feedLabel'))$('feedLabel').textContent=state.view==='diff'?'DIFFERENCE VIEW':'SKY FEED';
+  if($('viewModeLabel'))$('viewModeLabel').textContent=state.view==='diff'?'EPOCH DIFFERENCE':'INTENSITY';
+  if($('differenceHint'))$('differenceHint').textContent=state.view==='diff'?'Display-level pixel difference only; not calibrated photometry or a discovery claim.':'Compare epochs visually. Difference colors are display-level diagnostics, not calibrated science products.';
+  if($('imageCoords'))$('imageCoords').textContent='RA '+Number($('ra').value).toFixed(3)+'° / DEC '+Number($('dec').value).toFixed(3)+'°';
+  renderEpochStrip();
 }
-function renderDifference(){
-  if(state.index===0){ctx.fillStyle='#07080c';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#9299aa';ctx.font='18px system-ui';ctx.textAlign='center';ctx.fillText('Difference starts at epoch 2',canvas.width/2,canvas.height/2);return;}
+function renderDifference(token){
+  if(state.index===0){
+    ctx.fillStyle='#030610';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#9eadd0';ctx.font='15px system-ui';ctx.textAlign='center';
+    ctx.fillText('Choose epoch 02 or later to compare',canvas.width/2,canvas.height/2);
+    return;
+  }
   const a=new Image(),b=new Image();
-  a.onload=()=>{b.onload=()=>{const ca=document.createElement('canvas'),cb=document.createElement('canvas');ca.width=cb.width=canvas.width;ca.height=cb.height=canvas.height;const xa=ca.getContext('2d'),xb=cb.getContext('2d');xa.drawImage(a,0,0,canvas.width,canvas.height);xb.drawImage(b,0,0,canvas.width,canvas.height);const A=xa.getImageData(0,0,canvas.width,canvas.height).data,B=xb.getImageData(0,0,canvas.width,canvas.height).data,out=ctx.createImageData(canvas.width,canvas.height);for(let i=0;i<A.length;i+=4){const d=B[i]-A[i],m=Math.min(255,Math.abs(d)*8);out.data[i]=d>0?m:0;out.data[i+1]=d<0?m:0;out.data[i+2]=Math.min(255,Math.abs(d)*3);out.data[i+3]=255;}ctx.putImageData(out,0,0);drawCandidateMarkers();};b.src=state.frames[state.index].image_data_url;};a.src=state.frames[state.index-1].image_data_url;
+  a.onload=()=>{if(token!==state.renderToken)return;b.onload=()=>{
+    if(token!==state.renderToken)return;
+    const ca=document.createElement('canvas'),cb=document.createElement('canvas');
+    ca.width=cb.width=canvas.width;ca.height=cb.height=canvas.height;
+    const xa=ca.getContext('2d'),xb=cb.getContext('2d');
+    xa.drawImage(a,0,0,canvas.width,canvas.height);xb.drawImage(b,0,0,canvas.width,canvas.height);
+    const A=xa.getImageData(0,0,canvas.width,canvas.height).data,B=xb.getImageData(0,0,canvas.width,canvas.height).data,out=ctx.createImageData(canvas.width,canvas.height);
+    for(let i=0;i<A.length;i+=4){const d=(B[i]+B[i+1]+B[i+2]-A[i]-A[i+1]-A[i+2])/3,m=Math.min(255,Math.abs(d)*3.5);out.data[i]=d>0?m:0;out.data[i+1]=d<0?m:0;out.data[i+2]=Math.min(255,Math.abs(d)*.7);out.data[i+3]=255;}
+    ctx.putImageData(out,0,0);drawCandidateMarkers();
+  };b.onerror=()=>{if(token===state.renderToken){ctx.fillStyle='#030610';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ffbd8b';ctx.textAlign='center';ctx.fillText('Could not load comparison epoch',canvas.width/2,canvas.height/2);}};b.src=state.frames[state.index].image_data_url;};
+  a.onerror=()=>{if(token===state.renderToken){ctx.fillStyle='#030610';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#ffbd8b';ctx.textAlign='center';ctx.fillText('Could not load reference epoch',canvas.width/2,canvas.height/2);}};
+  a.src=state.frames[state.index-1].image_data_url;
+}
+function renderEpochStrip(){
+  const strip=$('epochStrip');if(!strip)return;
+  strip.innerHTML=state.frames.map((frame,i)=>'<button type="button" class="epoch-chip '+(i===state.index?'active':'')+'" data-epoch="'+i+'" aria-pressed="'+(i===state.index)+'"><b>E'+String(i+1).padStart(2,'0')+'</b><span>'+dateOnly(frame.timestamp)+'</span></button>').join('');
+  strip.querySelectorAll('[data-epoch]').forEach(btn=>btn.addEventListener('click',()=>{state.index=Number(btn.dataset.epoch);renderFrame();}));
 }
 function drawCandidateMarkers(){for(const c of state.candidates){const px=c.x/256*canvas.width,py=c.y/256*canvas.height;ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.strokeStyle='#d6ff4b';ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.moveTo(px-12,py);ctx.lineTo(px+12,py);ctx.moveTo(px,py-12);ctx.lineTo(px,py+12);ctx.strokeStyle='rgba(214,255,75,.6)';ctx.lineWidth=1;ctx.stroke();}}
 function renderCandidates(){ $('candidateCount').textContent=state.candidates.length;const el=$('candidateList');if(!state.candidates.length){el.innerHTML='<div class="empty">No candidates in this sequence.</div>';return;}el.innerHTML=state.candidates.map((c,i)=>`<div class="candidate ${state.selected===i?'selected':''}" data-index="${i}"><div class="candidate-top"><span><strong>${c.id}</strong></span><span class="candidate-type">${c.kind}</span></div><div class="candidate-meta"><div>Motion<strong>${c.motion_px.toFixed(2)} px</strong></div><div>S/N<strong>${c.snr.toFixed(1)}</strong></div><div>Score<strong>${Math.round(c.score*100)}%</strong></div><div>Vector<strong>${c.dx.toFixed(2)}, ${c.dy.toFixed(2)}</strong></div></div></div>`).join('');el.querySelectorAll('.candidate').forEach(n=>n.addEventListener('click',()=>{state.selected=Number(n.dataset.index);renderCandidates();$('selectedCandidate').textContent=state.candidates[state.selected].id;drawCandidateMarkers();}));}
 function renderSpectrum(){const w=spectrumCanvas.width,h=spectrumCanvas.height;spectrumCtx.clearRect(0,0,w,h);spectrumCtx.fillStyle='#090c12';spectrumCtx.fillRect(0,0,w,h);if(!state.spectrumWavelength.length)return;const pad=36,minX=.75,maxX=5,minY=Math.min(...state.spectrumFlux),maxY=Math.max(...state.spectrumFlux);spectrumCtx.strokeStyle='#222737';for(let i=0;i<5;i++){const y=pad+i*(h-2*pad)/4;spectrumCtx.beginPath();spectrumCtx.moveTo(pad,y);spectrumCtx.lineTo(w-pad,y);spectrumCtx.stroke();}spectrumCtx.beginPath();state.spectrumWavelength.forEach((xv,i)=>{const x=pad+(xv-minX)/(maxX-minX)*(w-2*pad),y=h-pad-(state.spectrumFlux[i]-minY)/(maxY-minY)*(h-2*pad);if(i===0)spectrumCtx.moveTo(x,y);else spectrumCtx.lineTo(x,y);});spectrumCtx.strokeStyle='#7ef6ff';spectrumCtx.lineWidth=2;spectrumCtx.stroke();}
-async function loadDemo(){setStatus('LOADING DEMO…');const r=await fetch('/api/demo');if(!r.ok)throw new Error(await r.text());const data=await r.json();state.frames=data.frames;state.candidates=data.candidates;state.spectrumWavelength=data.spectrum_wavelength_um;state.spectrumFlux=data.spectrum_flux_ujy;state.index=0;state.selected=null;$('timeline').max=state.frames.length-1;$('timelineLeft').textContent=dateOnly(state.frames[0].timestamp);$('timelineRight').textContent=dateOnly(state.frames.at(-1).timestamp);renderCandidates();renderSpectrum();renderFrame();setStatus('OFFLINE DEMO');}
+async function loadDemo(){setStatus('LOADING DEMO…');const r=await fetch('/api/demo');if(!r.ok)throw new Error(await r.text());const data=await r.json();state.frames=data.frames;state.candidates=data.candidates;state.spectrumWavelength=data.spectrum_wavelength_um;state.spectrumFlux=data.spectrum_flux_ujy;state.index=0;state.selected=null;$('timeline').max=state.frames.length-1;$('timelineLeft').textContent=dateOnly(state.frames[0].timestamp);$('timelineRight').textContent=dateOnly(state.frames.at(-1).timestamp);renderCandidates();renderSpectrum();renderFrame();setStatus('OFFLINE DEMO');if($('frameInstrument'))$('frameInstrument').textContent='DEMO DATASET';}
 async function fetchPreview(o, index, ra, dec, sizeDeg) {
   if (!o.access_url) throw new Error(o.obs_id + ': no access_url');
   const pp = new URLSearchParams({ url: o.access_url, ra: String(ra), dec: String(dec), size_deg: String(sizeDeg) });
@@ -87,8 +131,20 @@ $('resetBtn').addEventListener('click',()=>loadDemo().catch(()=>{}));
 $('timeline').addEventListener('input',e=>{state.index=Number(e.target.value);renderFrame();});
 $('prevBtn').addEventListener('click',()=>{if(state.frames.length){state.index=Math.max(0,state.index-1);renderFrame();}});
 $('nextBtn').addEventListener('click',()=>{if(state.frames.length){state.index=Math.min(state.frames.length-1,state.index+1);renderFrame();}});
-$('blinkBtn').addEventListener('click',()=>{if(!state.frames.length)return;if(state.blinkTimer){clearInterval(state.blinkTimer);state.blinkTimer=null;$('blinkBtn').textContent='▶ BLINK EPOCHS';return;}$('blinkBtn').textContent='■ STOP BLINK';state.blinkTimer=setInterval(()=>{state.index=(state.index+1)%state.frames.length;renderFrame();},650);});
-document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');state.view=btn.dataset.view;renderFrame();}));
+$('blinkBtn').addEventListener('click',()=>{if(!state.frames.length)return;if(state.blinkTimer){clearInterval(state.blinkTimer);state.blinkTimer=null;$('blinkBtn').innerHTML='<span>▶</span> Blink comparison <small>SPACE TO PLAY</small>';return;}$('blinkBtn').innerHTML='<span>■</span> Stop blinking <small>SPACE TO STOP</small>';state.blinkTimer=setInterval(()=>{state.index=(state.index+1)%state.frames.length;renderFrame();},650);});
+window.addEventListener('beforeunload',()=>{if(state.blinkTimer)clearInterval(state.blinkTimer);});
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-selected','false');});btn.classList.add('active');btn.setAttribute('aria-selected','true');state.view=btn.dataset.view;renderFrame();}));
+(() => {
+  let zoom=1;
+  const applyZoom=()=>{const wrap=$('canvasWrap');wrap.style.setProperty('--sky-zoom',zoom.toFixed(2));$('skyZoomLabel').textContent=Math.round(zoom*100)+'%';$('zoomOutBtn').disabled=zoom<=1;$('zoomInBtn').disabled=zoom>=2.5;};
+  $('zoomInBtn').addEventListener('click',()=>{zoom=Math.min(2.5,Math.round((zoom+.25)*100)/100);applyZoom();});
+  $('zoomOutBtn').addEventListener('click',()=>{zoom=Math.max(1,Math.round((zoom-.25)*100)/100);applyZoom();});
+  $('resetViewBtn').addEventListener('click',()=>{zoom=1;applyZoom();});
+  $('fullscreenBtn').addEventListener('click',async()=>{try{if(!document.fullscreenElement)await $('canvasWrap').requestFullscreen();else await document.exitFullscreen();}catch(e){setStatus('FULLSCREEN UNAVAILABLE');}});
+  document.addEventListener('fullscreenchange',()=>{$('fullscreenBtn').innerHTML=document.fullscreenElement?'<span>⛶</span> Exit full screen':'<span>⛶</span> Expand';});
+  document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;if(e.code==='ArrowLeft'&&state.frames.length){state.index=Math.max(0,state.index-1);renderFrame();}if(e.code==='ArrowRight'&&state.frames.length){state.index=Math.min(state.frames.length-1,state.index+1);renderFrame();}if(e.code==='Space'&&document.activeElement===document.body){e.preventDefault();$('blinkBtn').click();}});
+  applyZoom();
+})();
 loadDemo().catch(e=>{console.error(e);setStatus('DEMO ERROR')});
 
 
