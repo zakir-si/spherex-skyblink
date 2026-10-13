@@ -24,3 +24,15 @@ def test_fits_preview_decodes_largest_2d_extension():
     hdul.writeto(data)
     preview = fits_bytes_to_preview(data.getvalue())
     assert preview.startswith("data:image/png;base64,")
+
+
+def test_fits_preview_prefers_named_science_plane():
+    hdul = fits.HDUList([
+        fits.PrimaryHDU(),
+        fits.ImageHDU(np.full((20, 20), 2, dtype=np.float32), name="MASK"),
+        fits.ImageHDU(np.arange(64, dtype=np.float32).reshape(8, 8), name="SCI"),
+    ])
+    data = io.BytesIO()
+    hdul.writeto(data)
+    preview = fits_bytes_to_preview(data.getvalue())
+    assert preview.startswith("data:image/png;base64,")
