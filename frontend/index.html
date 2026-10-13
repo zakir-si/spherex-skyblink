@@ -3,65 +3,72 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SPHEREx SkyBlink</title>
-  <meta name="description" content="Explore how the infrared sky changes with SPHEREx." />
+  <meta name="theme-color" content="#050711" />
+  <title>SkyBlink — Explore the changing infrared universe</title>
+  <meta name="description" content="Explore real SPHEREx observations, compare epochs, and inspect possible changes in the infrared sky." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="ambient ambient-one" aria-hidden="true"></div><div class="ambient ambient-two" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">✦</span><span>SkyBlink</span><span class="pill">SPHEREx</span></div>
-    <div class="status" id="status">OFFLINE DEMO</div>
+    <a class="brand" href="#" aria-label="SkyBlink home"><span class="brand-mark">✳</span><span>skyblink<span class="brand-period">.</span></span><span class="pill">SPHEREx explorer</span></a>
+    <div class="topbar-right"><span class="live-indicator"><i></i> DEEP SKY INTERFACE</span><div class="status" id="status">OFFLINE DEMO</div></div>
   </header>
   <main class="shell">
     <section class="hero">
-      <div>
-        <p class="eyebrow">TIME-DOMAIN INFRARED ASTRONOMY</p>
-        <h1>Find what changed in the sky.</h1>
-        <p class="lede">Blink between SPHEREx epochs, inspect difference images, and flag possible moving or variable sources.</p>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> TIME-DOMAIN INFRARED ASTRONOMY</p>
+        <h1>The universe<br>is <span class="gradient-text">never still.</span></h1>
+        <p class="lede">A new way to watch the sky evolve. Explore SPHEREx observations, move between epochs, and investigate signals that deserve a closer look.</p>
+        <div class="hero-actions"><a class="scroll-cta" href="#explorer">Explore the sky <span>↓</span></a><span class="hero-note"><i class="tiny-star">✦</i> Real archive data · Interactive sky viewer</span></div>
       </div>
-      <div class="hero-card">
-        <div class="metric"><strong>102</strong><span>spectral channels</span></div>
-        <div class="metric"><strong>0.75–5 μm</strong><span>infrared coverage</span></div>
-        <div class="metric"><strong>6</strong><span>demo epochs</span></div>
+      <div class="orbit-stage" aria-label="Animated orbital illustration of a satellite and infrared sky">
+        <div class="orbit-label label-top">ALL-SKY SURVEY <b>↗</b></div>
+        <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div>
+        <div class="planet-glow"></div><div class="planet"><div class="planet-shine"></div><div class="planet-crater crater-a"></div><div class="planet-crater crater-b"></div></div>
+        <div class="satellite"><span class="sat-core"></span><span class="solar solar-left"></span><span class="solar solar-right"></span><span class="sat-antenna"></span></div>
+        <div class="orbit-label label-bottom"><span class="pulse-dot"></span> OBSERVING THE INFRARED SKY</div>
+        <div class="orbit-stat"><span>MISSION CHANNELS</span><strong>102<span> bands</span></strong></div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="stat-icon">◉</span><div><strong>0.75–5 μm</strong><small>Infrared wavelength range</small></div></div>
+        <div class="hero-stat"><span class="stat-icon">⌁</span><div><strong>Multiple epochs</strong><small>Explore observations over time</small></div></div>
+        <div class="hero-stat"><span class="stat-icon">✧</span><div><strong>Open science</strong><small>Built for curious minds</small></div></div>
       </div>
     </section>
-    <section class="controls panel">
+    <section class="section-intro" id="explorer"><div><p class="eyebrow">01 / OBSERVATORY</p><h2>Choose your patch<br>of the cosmos<span class="gradient-text">.</span></h2></div><p class="section-description">Search a sky position to load a local demo or query live SPHEREx archive metadata. Your next discovery starts with a coordinate.</p></section>
+    <section class="controls glass-card">
+      <div class="card-topline"><span class="micro-label"><span class="pulse-dot"></span> TARGET COORDINATES</span><span class="micro-label">J2000 REFERENCE FRAME</span></div>
       <div class="control-grid">
-        <label>RA (J2000)<input id="ra" type="number" step="0.00001" min="0" max="360" value="83.633" /></label>
-        <label>Dec (J2000)<input id="dec" type="number" step="0.00001" min="-90" max="90" value="-5.391" /></label>
-        <label>Radius (deg)<input id="radius" type="number" step="0.005" min="0.005" max="1" value="0.10" /></label>
-        <label>Wavelength (μm)<input id="wavelength" type="number" step="0.01" min="0.75" max="5" placeholder="all" /></label>
+        <label><span>Right ascension <i>RA</i></span><div class="input-wrap"><input id="ra" type="number" step="0.00001" min="0" max="360" value="83.633" /><span>°</span></div></label>
+        <label><span>Declination <i>DEC</i></span><div class="input-wrap"><input id="dec" type="number" step="0.00001" min="-90" max="90" value="-5.391" /><span>°</span></div></label>
+        <label><span>Search radius</span><div class="input-wrap"><input id="radius" type="number" step="0.005" min="0.005" max="1" value="0.10" /><span>deg</span></div></label>
+        <label><span>Wavelength <i>optional</i></span><div class="input-wrap"><input id="wavelength" type="number" step="0.01" min="0.75" max="5" placeholder="All bands" /><span>μm</span></div></label>
       </div>
-      <div class="actions">
-        <button class="primary" id="demoBtn">Load demo sky</button>
-        <button id="searchBtn">Search live SPHEREx</button>
-        <button class="ghost" id="resetBtn">Reset</button>
-      </div>
-      <p class="hint">Demo mode is fully offline. Live mode queries IRSA SIA v2.</p>
+      <div class="actions"><button class="primary" id="searchBtn"><span>⌕</span> Search live SPHEREx <i>↗</i></button><button id="demoBtn"><span>✦</span> Launch demo sky</button><button class="ghost" id="resetBtn">Reset ↺</button></div>
+      <p class="hint"><span>ⓘ</span> Demo mode works offline. Live search queries IRSA SIA v2; preview availability depends on the archive.</p>
     </section>
     <section class="viewer-layout">
-      <div class="viewer panel">
-        <div class="viewer-head">
-          <div><p class="section-kicker" id="epochLabel">Demo epoch 1</p><h2 id="frameDate">2025-07-01</h2></div>
-          <div class="view-tabs"><button class="tab active" data-view="sky">SKY</button><button class="tab" data-view="diff">DIFF</button></div>
-        </div>
-        <div class="sky-canvas-wrap" id="canvasWrap">
-          <canvas id="skyCanvas" width="768" height="768" aria-label="Sky image viewer"></canvas>
-          <div class="crosshair hidden" id="crosshair"></div>
-          <div class="legend"><span><i class="dot static"></i> source</span><span><i class="dot moving"></i> candidate</span></div>
-        </div>
-        <div class="timeline"><button id="prevBtn" aria-label="Previous epoch">◀</button><input id="timeline" type="range" min="0" max="5" value="0" step="1" /><button id="nextBtn" aria-label="Next epoch">▶</button></div>
-        <div class="timeline-meta"><span id="timelineLeft">2025-07-01</span><span id="timelineRight">2025-11-25</span></div>
-        <button class="blink" id="blinkBtn">▶ BLINK EPOCHS</button>
+      <div class="viewer glass-card tilt-card">
+        <div class="viewer-head"><div><p class="section-kicker" id="epochLabel">Demo epoch 1</p><h2 id="frameDate">2025-07-01</h2><span class="viewer-subtitle">INFRARED FIELD <span>·</span> MULTI-EPOCH VIEW</span></div><div class="view-tabs"><button class="tab active" data-view="sky">SKY MAP</button><button class="tab" data-view="diff">DIFFERENCE</button></div></div>
+        <div class="sky-canvas-wrap" id="canvasWrap"><canvas id="skyCanvas" width="768" height="768" aria-label="Sky image viewer"></canvas><div class="crosshair hidden" id="crosshair"></div><div class="image-overlay"><span class="image-chip"><i class="pulse-dot"></i> SKY FEED</span><span class="image-coords">RA / DEC · J2000</span></div><div class="legend"><span><i class="dot static"></i> source</span><span><i class="dot moving"></i> candidate</span></div><div class="scanline"></div></div>
+        <div class="timeline"><button id="prevBtn" aria-label="Previous epoch">←</button><input id="timeline" type="range" min="0" max="5" value="0" step="1" /><button id="nextBtn" aria-label="Next epoch">→</button></div>
+        <div class="timeline-meta"><span id="timelineLeft">2025-07-01</span><span class="timeline-center"><i class="pulse-dot"></i> EPOCH TIMELINE</span><span id="timelineRight">2025-11-25</span></div>
+        <button class="blink" id="blinkBtn"><span>▶</span> BLINK EPOCHS <small>COMPARE TIME</small></button>
       </div>
       <aside class="side">
-        <section class="panel inspector"><div class="panel-head"><h3>Candidate queue</h3><span id="candidateCount" class="count">0</span></div><div id="candidateList" class="candidate-list"></div></section>
-        <section class="panel spectrum"><div class="panel-head"><h3>102-band spectrum</h3><span id="selectedCandidate">Demo</span></div><canvas id="spectrumCanvas" width="520" height="250"></canvas><div class="spectrum-axis"><span>0.75 μm</span><span>5.0 μm</span></div><p class="science-note">Demo spectrum is synthetic and exists to exercise the UI. Live extraction is the next science milestone.</p></section>
-        <section class="panel about"><h3>What SkyBlink is doing</h3><p>It compares aligned epochs, subtracts them, estimates noise robustly, and ranks significant residuals. A residual is a <strong>candidate</strong>, not a confirmed discovery.</p></section>
+        <section class="panel inspector glass-card"><div class="panel-head"><div><p class="section-kicker">02 / SIGNALS</p><h3>Candidate queue</h3></div><span id="candidateCount" class="count">0</span></div><p class="panel-caption">Potential signals ranked for closer inspection.</p><div id="candidateList" class="candidate-list"></div><div class="queue-foot"><span class="pulse-dot"></span> CANDIDATES ARE NOT CONFIRMED DISCOVERIES</div></section>
+        <section class="panel spectrum glass-card"><div class="panel-head"><div><p class="section-kicker">03 / SPECTRUM</p><h3>102-band explorer</h3></div><span id="selectedCandidate" class="selection-tag">Demo</span></div><canvas id="spectrumCanvas" width="520" height="250"></canvas><div class="spectrum-axis"><span>0.75 μm</span><span>5.0 μm</span></div><p class="science-note">Demo spectrum is synthetic. Live spectral extraction is a future science milestone.</p></section>
+        <section class="panel about glass-card"><p class="section-kicker">FIELD NOTES</p><h3>From photons to possibilities.</h3><p>SkyBlink helps explore observations across time. Differences can come from real changes, alignment, noise, or instrument effects. Every candidate needs scientific validation.</p><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noreferrer">Explore the SPHEREx archive <span>↗</span></a></section>
       </aside>
     </section>
+    <section class="closing-note"><span class="closing-symbol">✳</span><div><p class="eyebrow">THE SKY IS A DATASET</p><h2>Look closer. Ask better questions.</h2><p>Open-source exploration for a changing universe.</p></div><span class="closing-coordinate">0h 00m 00s<br>+00° 00′ 00″</span></section>
   </main>
-  <footer><span>SPHEREx SkyBlink • open-source prototype</span><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noreferrer">SPHEREx archive ↗</a></footer>
+  <footer><span>SKYBLINK <b>·</b> SPHEREx open-source prototype</span><span>BUILT FOR EXPLORATION <i>✦</i></span><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noreferrer">SPHEREx archive ↗</a></footer>
   <script src="/app.js"></script>
 </body>
 </html>
