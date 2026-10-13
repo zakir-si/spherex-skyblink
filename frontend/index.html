@@ -52,19 +52,41 @@
       <div class="actions"><button class="primary" id="searchBtn"><span>⌕</span> Search live SPHEREx <i>↗</i></button><button id="demoBtn"><span>✦</span> Launch demo sky</button><button class="ghost" id="resetBtn">Reset ↺</button></div>
       <p class="hint"><span>ⓘ</span> Demo mode works offline. Live search queries IRSA SIA v2; preview availability depends on the archive.</p>
     </section>
-    <section class="viewer-layout">
-      <div class="viewer glass-card tilt-card">
-        <div class="viewer-head"><div><p class="section-kicker" id="epochLabel">Demo epoch 1</p><h2 id="frameDate">2025-07-01</h2><span class="viewer-subtitle">INFRARED FIELD <span>·</span> MULTI-EPOCH VIEW</span></div><div class="view-tabs"><button class="tab active" data-view="sky">SKY MAP</button><button class="tab" data-view="diff">DIFFERENCE</button></div></div>
-        <div class="sky-canvas-wrap" id="canvasWrap"><canvas id="skyCanvas" width="768" height="768" aria-label="Sky image viewer"></canvas><div class="crosshair hidden" id="crosshair"></div><div class="image-overlay"><span class="image-chip"><i class="pulse-dot"></i> SKY FEED</span><span class="image-coords">RA / DEC · J2000</span></div><div class="legend"><span><i class="dot static"></i> source</span><span><i class="dot moving"></i> candidate</span></div><div class="scanline"></div></div>
-        <div class="timeline"><button id="prevBtn" aria-label="Previous epoch">←</button><input id="timeline" type="range" min="0" max="5" value="0" step="1" /><button id="nextBtn" aria-label="Next epoch">→</button></div>
-        <div class="timeline-meta"><span id="timelineLeft">2025-07-01</span><span class="timeline-center"><i class="pulse-dot"></i> EPOCH TIMELINE</span><span id="timelineRight">2025-11-25</span></div>
-        <button class="blink" id="blinkBtn"><span>▶</span> BLINK EPOCHS <small>COMPARE TIME</small></button>
+    <section class="viewer-layout viewer-workspace" aria-label="Changing sky analysis workspace">
+      <div class="viewer glass-card">
+        <div class="workspace-toolbar">
+          <div class="workspace-identity"><span class="workspace-glyph">◉</span><div><p class="section-kicker">LIVE SKY LAB <span class="toolbar-separator">/</span> 01</p><strong>Temporal image explorer</strong></div></div>
+          <div class="workspace-status"><i class="pulse-dot"></i><span id="frameInstrument">DEMO DATASET</span><span class="status-divider">·</span><span id="frameCounter">01 / 06</span></div>
+        </div>
+        <div class="viewer-head"><div class="frame-heading"><p class="section-kicker" id="epochLabel">Demo epoch 1</p><h2 id="frameDate">2025-07-01</h2><span class="viewer-subtitle">J2000 FIELD <span>·</span> INFRARED <span>·</span> <span id="viewModeLabel">INTENSITY</span></span></div><div class="view-tabs" role="tablist" aria-label="Image rendering mode"><button class="tab active" data-view="sky" role="tab" aria-selected="true">Intensity</button><button class="tab" data-view="diff" role="tab" aria-selected="false">Difference</button></div></div>
+        <div class="image-toolbar" aria-label="Image tools">
+          <div class="tool-group"><span class="tool-label">VIEW TOOLS</span><button class="tool-button" id="zoomOutBtn" aria-label="Zoom out" title="Zoom out">−</button><span id="skyZoomLabel" class="zoom-readout">100%</span><button class="tool-button" id="zoomInBtn" aria-label="Zoom in" title="Zoom in">+</button><button class="tool-button tool-reset" id="resetViewBtn" title="Reset image view">Reset view</button></div>
+          <button class="tool-button fullscreen-tool" id="fullscreenBtn" title="Expand sky viewer"><span>⛶</span> Expand</button>
+        </div>
+        <div class="sky-canvas-wrap" id="canvasWrap">
+          <div class="sky-grid" aria-hidden="true"></div>
+          <canvas id="skyCanvas" width="768" height="768" aria-label="SPHEREx sky image. Use the epoch timeline to compare observations over time."></canvas>
+          <div class="crosshair hidden" id="crosshair"></div>
+          <div class="image-overlay"><span class="image-chip"><i class="pulse-dot"></i><span id="feedLabel">SKY FEED</span></span><span class="image-coords" id="imageCoords">RA 83.633° <span>/</span> DEC −5.391°</span></div>
+          <div class="image-corner image-corner-tl">N ↑ <span>·</span> E ←</div>
+          <div class="image-corner image-corner-br">SPHEREx <span>·</span> J2000</div>
+          <div class="legend"><span><i class="dot static"></i> Source</span><span><i class="dot moving"></i> Prototype candidate</span></div>
+          <div class="scanline"></div>
+        </div>
+        <div class="epoch-control">
+          <div class="epoch-control-head"><div><span class="tool-label">OBSERVATION SEQUENCE</span><strong id="timelineReadout">Epoch 01</strong></div><span class="epoch-range-label">CHRONOLOGICAL ORDER</span></div>
+          <div class="timeline"><button id="prevBtn" aria-label="Previous epoch">←</button><input id="timeline" type="range" min="0" max="5" value="0" step="1" aria-label="Select observation epoch" /><button id="nextBtn" aria-label="Next epoch">→</button></div>
+          <div class="timeline-meta"><span id="timelineLeft">2025-07-01</span><span class="timeline-center"><i class="pulse-dot"></i> TIME SCRUBBER</span><span id="timelineRight">2025-11-25</span></div>
+          <div id="epochStrip" class="epoch-strip" aria-label="Select an observation epoch"></div>
+        </div>
+        <div class="viewer-footer"><button class="blink" id="blinkBtn"><span>▶</span> Blink comparison <small>SPACE TO PLAY</small></button><p id="differenceHint" class="difference-hint">Compare epochs visually. Difference colors are display-level diagnostics, not calibrated science products.</p></div>
       </div>
       <aside class="side">
         <section class="panel inspector glass-card"><div class="panel-head"><div><p class="section-kicker">02 / SIGNALS</p><h3>Candidate queue</h3></div><span id="candidateCount" class="count">0</span></div><p class="panel-caption">Potential signals ranked for closer inspection.</p><div id="candidateList" class="candidate-list"></div><div class="queue-foot"><span class="pulse-dot"></span> CANDIDATES ARE NOT CONFIRMED DISCOVERIES</div></section>
         <section class="panel spectrum glass-card"><div class="panel-head"><div><p class="section-kicker">03 / SPECTRUM</p><h3>102-band explorer</h3></div><span id="selectedCandidate" class="selection-tag">Demo</span></div><canvas id="spectrumCanvas" width="520" height="250"></canvas><div class="spectrum-axis"><span>0.75 μm</span><span>5.0 μm</span></div><p class="science-note">Demo spectrum is synthetic. Live spectral extraction is a future science milestone.</p></section>
         <section class="panel about glass-card"><p class="section-kicker">FIELD NOTES</p><h3>From photons to possibilities.</h3><p>SkyBlink helps explore observations across time. Differences can come from real changes, alignment, noise, or instrument effects. Every candidate needs scientific validation.</p><a href="https://irsa.ipac.caltech.edu/Missions/spherex.html" target="_blank" rel="noreferrer">Explore the SPHEREx archive <span>↗</span></a></section>
       </aside>
+
     </section>
     <section class="closing-note"><span class="closing-symbol">✳</span><div><p class="eyebrow">THE SKY IS A DATASET</p><h2>Look closer. Ask better questions.</h2><p>Open-source exploration for a changing universe.</p></div><span class="closing-coordinate">0h 00m 00s<br>+00° 00′ 00″</span></section>
   </main>
