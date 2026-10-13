@@ -14,7 +14,8 @@ class Settings:
     max_results: int = int(os.getenv("MAX_RESULTS", "100"))
     max_live_previews: int = int(os.getenv("MAX_LIVE_PREVIEWS", "6"))
     preview_size_deg: float = float(os.getenv("PREVIEW_SIZE_DEG", "0.05"))
-    preview_cache_size: int = int(os.getenv("PREVIEW_CACHE_SIZE", "64"))
+    preview_cache_size: int = int(os.getenv("PREVIEW_CACHE_SIZE", "24"))
+    max_remote_bytes: int = int(os.getenv("MAX_REMOTE_BYTES", str(64 * 1024 * 1024)))
 
 
 settings = Settings()
